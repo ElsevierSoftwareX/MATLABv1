@@ -133,12 +133,17 @@ guidata(hObject, handles);
 
 % Initial user prompt after startup
 uigetpref('DlgPref','Tab1dlg','Load data',...
-    {'Please input calibration factor of diffraction data to be analysed. This can also be input at a later stage.'
+    {'To begin,'
+    '1. Please input calibration factor of diffraction data to be analysed (or do so later).'
     ''
-    'If loading a diffraction pattern, select the type (Polycrystalline or Amorphous) before opening the text file.'
-    'You can also directly load a radial intensity profile (single column text file).'
+    '2. Load the diffraction data:'
+    'a) To obtain an azimuthal / radial intensity profile of a diffraction pattern, select the type'
+    '(Polycrystalline or Amorphous) before loading the relevant text file (of symmetric dimensions).'
+    'OR'
+    'b) You can directly load a radial intensity profile (single-column text file) and proceed to fitting.'
     ''
-    'For further help, mouse over the text fields or click on the help [?] icons.'},...
+    'For further help, mouse over the text fields for hints or click on the help [?] icons to access an'
+    'online manual (requires Internet). Otherwise, a PDF manual is also accessible via the Help menu.'},...
     {'ok';'OK'});
 % ------------------------------------------------------------------------
 
@@ -166,12 +171,20 @@ set(handles.Panel1,'Visible','Off');
 set(handles.Panel2,'Visible','On');
 set(handles.Tab1,'Value',0);
 
-uigetpref('DlgPref','Tab2dlg','Select fitting parameters',...
-    {'Select the elements present in the material and their relative' 
-    'atomic ratios, leaving other fields blank if less than 5 elements.' 
-    'Ratios do not have to add upto 1.'
+uigetpref('DlgPref','Tab2dlg','Select parameters and perform fitting',...
+    {'1. Select the elements present in the material.'
     ''
-    'For further help, mouse over or click on the help [?] icons.'},...
+    '2. Input their relative atomic ratios (do not have to add up to 1),'
+    'leaving other fields blank if less than 5 elements.'
+    ''
+    '3. Click "Auto Fit" to fit background to I(q) and plot RDF.'
+    'You can modify parameters further and click "Manual Fit" to update plots.'
+    ''
+    '4. Save/Export necessary data via the File menu.'
+    ''
+    'For further help, mouse over the text fields for hints or click on'
+    'the help [?] icons to access an online manual (requires Internet).'
+    'Otherwise, a PDF manual is also accessible via the Help menu.'},...
     {'ok';'OK'});
 
 % --------------------------------------------------------------------
@@ -198,9 +211,9 @@ function ds_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of ds as a double
 % --- ds: Calibration factor input
 ds = str2double(get(hObject,'String'));
-if isnan(ds)
+if isnan(ds) || ds < 0
     set(hObject, 'String', 1);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
 end
 handles.ds = ds;
 
@@ -334,7 +347,7 @@ while OPT == 1
 
     % Alert user to adjust ellipse position and double click when finished
     h = helpdlg({'Move and resize marker to fit one of the inner contours',...
-        '(in white / black / blue, with minimal intensity variance).',...
+        '(in black / blue / green, with minimal intensity variance).',...
         'Try to be as accurate as possible.','',...
         'Double-click inside ellipse once finished.'},...
         'Adjust ellipse marker');
@@ -812,7 +825,7 @@ while OPT == 1
                 'Curvature', [1,1], 'EdgeColor', 'm', 'LineWidth', 2);    
             guidata(hObject,handles)
             
-            try figure(LineProfileFig)
+            try figure(FigCentrefinder)
             catch
             end
             Accept_Opt = questdlg('Do you want to accept the optimised centre?',...
@@ -905,6 +918,8 @@ for xx=1:nx
 end;
 if br == 1
     delete(AzProgBar);
+    % User clicked the Cancel button.
+	errordlg({'Unable to proceed with analysis.'},'Analysis terminated by user','modal');
     return;
 end;
 azvar=m2./nazav;
@@ -920,10 +935,12 @@ guidata(hObject,handles)
 % -------------------------------------------------------
 % Ask user to choose directory to save files
 % -------------------------------------------------------
-folder = uigetdir(pname,'Select/create folder to save output');
+folder = uigetdir(pname,'Select folder to save azimuthal average/variance data');
 if folder == 0
 	% User clicked the Cancel button.
-	return;
+	errordlg({'You have not saved the data.',...
+        'Unable to proceed with analysis.'},'Analysis terminated by user','modal');
+    return;
 end
 addpath(folder);
 rehash toolboxcache;
@@ -964,12 +981,12 @@ xlabel('Pixel');
 ylabel('Intensity');
 % -------------------------------------------------------
 % Alert user on process
-uiwait(msgbox({'Azimuthally averaged intensity and variance data have been',...
+uiwait(msgbox({'Azimuthally averaged intensity and variance raw data have been',...
     'saved in the selected folder, and are plotted in separate figures.','',...
-    'To continue, click "OK" to plot "Intensity Profile" in the main window.',...
-    'If you wish to stop and resume analysis later, just',...
-    'load the associated Intensity Profile ("azav.txt").'},...
-    'Click OK to continue','help'));
+    'To continue, click "OK" to plot "Azimuthally Averaged Intensity Profile"',...
+    'in the main window. If you wish to stop and resume analysis later,',...
+    'just load the associated Intensity Profile ("azav.txt").'},...
+    'Click OK to continue','help','modal'));
 % -------------------------------------------------------
 %% Load / plot average intensity data for next analysis step
 % -------------------------------------------------------
@@ -1026,10 +1043,10 @@ handles.x = x;
 guidata(hObject,handles)
 % -------------------------------------------------------
 % Prompt user to continue with RDF Analysis
-uiwait(msgbox({'If necessary, please modify the data range for fitting.',...
+msgbox({'If necessary, please modify the data range for fitting.',...
     'Check that a calibration factor has been input before',...
-    'proceeding to click "Calibrate selected data range".'},...
-    'Modify/Calibrate selected data range','help'));
+    'proceeding to click "Calibrate and plot selected data range".'},...
+    'Modify/Calibrate selected data range','help','modal');
 % -------------------------------------------------------
 
 function DAT_IND = IndexData(DAT)
@@ -1137,14 +1154,13 @@ handles.x = x;
 try close (m)
 catch
 end
+guidata(hObject,handles)
 % -------------------------------------------------------
 % Prompt user to continue with RDF Analysis
-uiwait(msgbox({'Please check that a calibration factor has been input',...
-    'before proceeding.',...
-    'If necessary, modify the data range for fitting and click',...
-    '"Calibrate selected data range".'},...
-    'Modify/Calibrate selected data range','help'));
-guidata(hObject,handles)
+msgbox({'If necessary, please modify the data range for fitting.',...
+    'Check that a calibration factor has been input before',...
+    'proceeding to click "Calibrate and plot selected data range".'},...
+    'Modify/Calibrate selected data range','help','modal');
 % -----------------------------------------------------------------------
 % ----------------------------------------------------------------------
 
@@ -1169,9 +1185,9 @@ function text_d1_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of text_d1 as a double
 %--- d1: starting data point
 d1 = str2double(get(hObject,'String'));
-if isnan(d1)
+if isnan(d1) || d1 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
 end
 handles.d1 = d1;
 set(handles.text_d1,'String',handles.d1);
@@ -1199,9 +1215,9 @@ function text_d2_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of text_d2 as a double
 % --- d2: ending data point
 d2 = str2double(get(hObject,'String'));
-if isnan(d2)
+if isnan(d2) || d2 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
 end
 if d2 > length(handles.dat_ind)
     max_dat_ind = max(handles.dat_ind);
@@ -1215,7 +1231,7 @@ guidata(hObject,handles)
 % ---------------------------------------------------------------------
 % -----------------------------------------------------------------------
 % --- Executes on button press in Button_Plot
-% (Calibrate selected data range)
+% ("Calibrate and plot selected data range")
 function Button_Plot_Callback(hObject, eventdata, handles)
 % hObject    handle to Button_Plot (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -1273,14 +1289,14 @@ handles.s2 = s2;
 L = uint16(length(q));
 handles.L = L;
 
+guidata(hObject,handles)
 % -------------------------------------------------------
 % Prompt user to continue with RDF Analysis
-uiwait(msgbox({'If selected data range is satisfactory, click',...
+msgbox({'If selected data range is satisfactory, click',...
     '"RDF Plot" tab to move on to fitting.',...
     '',...
-    'If not, modify data range and calibrate again.'},...
-    'Click "RDF Plot"','help'));
-guidata(hObject,handles)
+    'If not, modify data range and calibrate to plot again.'},...
+    'Click "RDF Plot"','help','modal');
 % -----------------------------------------------------------------------
 
 % ----------------------------------------------------------------------
@@ -1508,9 +1524,10 @@ function edit_e1_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_e1 as a double
 % --- Composition of element 1
 e1 = str2double(get(hObject,'String'));
-if isnan(e1)
+if isnan(e1) || e1 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+    e1 = 0;
 end
 handles.e1 = e1;
 
@@ -1537,9 +1554,10 @@ function edit_e2_Callback(hObject, eventdata, handles) %#ok<*INUSL>
 %        str2double(get(hObject,'String')) returns contents of edit_e2 as a double
 % --- Composition of element 2
 e2 = str2double(get(hObject,'String'));
-if isnan(e2)
+if isnan(e2) || e2 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+    e2 = 0;
 end
 handles.e2 = e2;
 
@@ -1566,9 +1584,10 @@ function edit_e3_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_e3 as a double
 % --- Composition of element 3
 e3 = str2double(get(hObject,'String'));
-if isnan(e3)
+if isnan(e3) || e3 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+    e3 = 0;
 end
 handles.e3 = e3;
 
@@ -1595,9 +1614,10 @@ function edit_e4_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_e4 as a double
 % --- Composition of element 4
 e4 = str2double(get(hObject,'String'));
-if isnan(e4)
+if isnan(e4) || e4 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+    e4 = 0;
 end
 handles.e4 = e4;
 
@@ -1624,9 +1644,10 @@ function edit_e5_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_e5 as a double
 % --- Composition of element 5
 e5 = str2double(get(hObject,'String'));
-if isnan(e5)
+if isnan(e5) || e5 < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+    e5 = 0;
 end
 handles.e5 = e5;
 
@@ -1654,9 +1675,10 @@ function edit_N_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit_N as text
 %        str2double(get(hObject,'String')) returns contents of edit_N as a double
 N = str2double(get(hObject,'String'));
-if isnan(N)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+if isnan(N) || N < 0
+    set(hObject, 'String', 100);
+    errordlg('Input must be a positive number','Error');
+    N = 100;
 end
 handles.N = N;
 % print value of N in static text and update field
@@ -1685,9 +1707,9 @@ function edit_dN_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit_dN as text
 %        str2double(get(hObject,'String')) returns contents of edit_dN as a double
 dN = str2double(get(hObject,'String'));
-if isnan(dN)
+if isnan(dN) || dN < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
 end
 handles.dN = dN;
 
@@ -1743,13 +1765,22 @@ function q_fixed_Callback(hObject, eventdata, handles)
 
 % --- q_fix = value close to which user wants fitting to be done
 q_fix = str2double(get(hObject,'String'));
-if isnan(q_fix)
+if isnan(q_fix) || q_fix < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
+end
+% Warn user if q input exceeds available range --> set to max(q)
+if q_fix > max(handles.q)
+    uiwait(warndlg({'The value you entered for q exceeds the available range.',...
+    'It will be replaced with the maximum q value.'},...
+    'q set to maximum available value','modal'));
+    q_fix = max(handles.q);
+    set(hObject,'String',max(handles.q));
 end
 handles.q_fix = q_fix;
 % print desired value of q in static text and update field
-% actual value (data point) will update when 'Fit Data' button is pushed
+% actual value (data point) will update when 'Manual Fit' button is pushed
+% (Auto fit uses max(q))
 set(handles.text_q_fit, 'String', handles.q_fix);
 
 guidata(hObject,handles)
@@ -1776,9 +1807,9 @@ function edit_dq_Callback(hObject, eventdata, handles)
 
 % --- value to change q_fixed by
 dq = str2double(get(hObject,'String'));
-if isnan(dq)
+if isnan(dq) || dq < 0
     set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+    errordlg('Input must be a positive number','Error');
 end
 handles.dq = dq;
 
@@ -1839,12 +1870,18 @@ function edit_damping_Callback(hObject, eventdata, handles)
 % --- set damping factor (default 0.3)
 damping = str2double(get(hObject,'String'));
 if isnan(damping)
-    set(hObject, 'String', 0);
+    set(hObject, 'String', 0.3);
     errordlg('Input must be a number','Error');
+    damping = 0.3;
+end
+if damping < 0 || damping > 1
+    set(hObject, 'String', 0.3)
+    errordlg('Input must be between 0 and 1','Error');
+    damping = 0.3;
 end
 handles.damping = damping;
 % print value of damping factor in static text
-set(handles.text_damping, 'String', damping);
+set(handles.text_damping, 'String', handles.damping);
 
 guidata(hObject,handles)
 
@@ -1872,9 +1909,10 @@ function edit_rmax_Callback(hObject, eventdata, handles)
 
 % --- rmax sets the range of r (x-axis) to plot G(r)
 rmax = str2double(get(hObject,'String'));
-if isnan(rmax)
-    set(hObject, 'String', 0);
-    errordlg('Input must be a number','Error');
+if isnan(rmax) || rmax < 0
+    set(hObject, 'String', 10);
+    errordlg('Input must be a positive number','Error');
+    rmax = 10;
 end
 handles.rmax = rmax;
 
@@ -2232,11 +2270,9 @@ q_index = dsearchn(handles.q,tri,handles.q_fix);
 q_fit = handles.q(q_index);
 % display q value at which fitting is done
 set(handles.text_q_fit, 'String', q_fit);
-
 handles.q_fit = q_fit;
 
 guidata(hObject,handles)
-
 % ---------------------------------------------------------------------
 %% Compute fq_sq = <f(s)>^2
 s2 = handles.s2;
@@ -2387,10 +2423,6 @@ hold on
 plot([xlim(1) xlim(2)], [0 0],'k'); 
 hold off
 
-% ----------------------------------------------------------------------
-% Plot Jr
-
-
 guidata(hObject,handles)
 % --------------------------------------------------------------------
 
@@ -2404,53 +2436,65 @@ function UiMenu_SavePlots_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Ask user to choose directory to save Iq, Phiq and Gr plots as .jpeg
-folder = uigetdir('','Select folder to save plots');
-set(groot,'defaultFigurePaperPositionMode','auto');
+SaveDlg = questdlg({'This will save the I(q), Phi(q) and G(r) plots as they are.',...
+    'Click OK to continue to save them as individual JPEG files.',...
+    '','If you wish to edit the plots before exporting, click Cancel.',...
+    '','Ensure Zoom/Data Cursor tools are inactive, then right-click on',...
+    'the individual plots and choose "Open plot in new figure".'},...
+    'Save Plots',...
+    'OK','Cancel','OK');
+switch SaveDlg
+    case 'Cancel'
+        return;
+    case 'OK'
+        % Ask user to choose directory to save Iq, Phiq and Gr plots as .jpeg
+        folder = uigetdir('','Select folder to save plots');
+        set(groot,'defaultFigurePaperPositionMode','auto');
 
-% Iq
-ax1 = handles.axes4;
-ax1.Units = 'pixels';
-pos = ax1.Position;
-ti = ax1.TightInset;
-rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
-PlotI = getframe(ax1,rect);
+        % Iq
+        ax1 = handles.axes4;
+        ax1.Units = 'pixels';
+        pos = ax1.Position;
+        ti = ax1.TightInset;
+        rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
+        PlotI = getframe(ax1,rect);
 
-figure('visible','off');
-imshow(PlotI.cdata);
-filename1 = sprintf('%s\\Plot_Iq',folder);
-print(gcf,filename1,'-djpeg');
-close(gcf);
+        figure('visible','off');
+        imshow(PlotI.cdata);
+        filename1 = sprintf('%s\\Plot_Iq',folder);
+        print(gcf,filename1,'-djpeg');
+        close(gcf);
 
-% Phiq
-ax2 = handles.axes6;
-ax2.Units = 'pixels';
-pos = ax2.Position;
-ti = ax2.TightInset;
-rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
-PlotPhi = getframe(ax2,rect);
+        % Phiq
+        ax2 = handles.axes6;
+        ax2.Units = 'pixels';
+        pos = ax2.Position;
+        ti = ax2.TightInset;
+        rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
+        PlotPhi = getframe(ax2,rect);
 
-figure('visible','off');
-imshow(PlotPhi.cdata);
-filename2 = sprintf('%s\\Plot_Phiq',folder);
-print(gcf,filename2,'-djpeg');
-close(gcf);
+        figure('visible','off');
+        imshow(PlotPhi.cdata);
+        filename2 = sprintf('%s\\Plot_Phiq',folder);
+        print(gcf,filename2,'-djpeg');
+        close(gcf);
 
-% Gr
-ax3 = handles.axes7;
-ax3.Units = 'pixels';
-pos = ax3.Position;
-ti = ax3.TightInset;
-rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
-PlotGr = getframe(ax3,rect);
+        % Gr
+        ax3 = handles.axes7;
+        ax3.Units = 'pixels';
+        pos = ax3.Position;
+        ti = ax3.TightInset;
+        rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
+        PlotGr = getframe(ax3,rect);
 
-figure('visible','off');
-imshow(PlotGr.cdata);
-filename3 = sprintf('%s\\Plot_Gr',folder);
-print(gcf,filename3,'-djpeg');
-close(gcf);
+        figure('visible','off');
+        imshow(PlotGr.cdata);
+        filename3 = sprintf('%s\\Plot_Gr',folder);
+        print(gcf,filename3,'-djpeg');
+        close(gcf);
 
-msgbox({'Plots have been saved in selected folder.'},'Saved');
+        uiwait(msgbox({'Plots have been saved in selected folder.'},'Saved'));
+end;
 
 % --------------------------------------------------------------------
 function UiMenu_ExportCSV_Callback(hObject, eventdata, handles)
@@ -2508,14 +2552,14 @@ C = [P1;P2;P3;P4];
 T3 = cell2table(C);
 
 % export_excel to separate csv files
-filename1 = sprintf('%s\\Results_q.csv',folder);
+filename1 = sprintf('%s\\Data_q.csv',folder);
 writetable(T1,filename1);
-filename2 = sprintf('%s\\Results_r.csv',folder);
+filename2 = sprintf('%s\\Data_r.csv',folder);
 writetable(T2,filename2);
 filename3 = sprintf('%s\\Parameters.csv',folder);
 writetable(T3,filename3,'WriteVariableNames',0);
 
-msgbox({'Three CSV files have been saved in selected folder.'},'Saved');
+uiwait(msgbox({'Three CSV files have been saved in selected folder.'},'Saved'));
 
 % --------------------------------------------------------------------
 function UiMenu_ExportExcel_Callback(hObject, eventdata, handles)
@@ -2573,11 +2617,19 @@ T3 = cell2table(C);
 
 % export_excel to single Excel file with 2 sheets
 filename = sprintf('%s\\%s',path,file);
-writetable(T3,filename,'WriteVariableNames',0);
-writetable(T1,filename,'Sheet',2);
-writetable(T2,filename,'Sheet',2,'Range','F1');
+writetable(T3,filename,'WriteVariableNames',0,'Sheet','Parameters');
+writetable(T1,filename,'Sheet','Data');
+writetable(T2,filename,'Sheet','Data','Range','F1');
+% delete default Sheet 1 in workbook using ActiveX functionality (Windows)
+objExcel = actxserver('Excel.Application');
+objExcel.Workbooks.Open(filename);
+objExcel.ActiveWorkbook.Sheets.Item(1).Delete;
+objExcel.ActiveWorkbook.Save;
+objExcel.ActiveWorkbook.Close;
+objExcel.Quit;
+objExcel.delete;
 
-msgbox({'Excel workbook has been saved in selected folder.'},'Saved');
+uiwait(msgbox({'Excel workbook has been saved in selected folder.'},'Saved'));
 
 % --------------------------------------------------------------------
 function UiMenu_helpPDF_Callback(hObject, eventdata, handles)
@@ -2616,6 +2668,18 @@ function UiMenu_About_Callback(hObject, eventdata, handles)
 % ---------------------------------------------------------------------
 % Context menus on right click on plot axes in RDF Plot tab
 % ---------------------------------------------------------------------
+
+% --------------------------------------------------------------------
+function NewFigPlot_axes1_Callback(hObject, eventdata, handles)
+% hObject    handle to NewFigPlot_axes1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+ScreenRes = handles.ScreenRes;
+FigIP = figure('Name','Intensity Profile','NumberTitle','off',...
+    'OuterPosition',[ScreenRes(3)/3 1 ScreenRes(3)/3 ScreenRes(4)/3]);
+new_axes = copyobj([handles.axes1 legend(handles.axes1)],FigIP);
+set(new_axes,'OuterPosition',[0 0 1 1]);
+
 % --------------------------------------------------------------------
 function NewFigPlot_axes4_Callback(hObject, eventdata, handles)
 % hObject    handle to NewFigPlot_axes4 (see GCBO)
@@ -2728,8 +2792,8 @@ function figure1_CloseRequestFcn(hObject, eventdata, handles)
 CloseDlg = questdlg({'Closing eRDF Analyser will close all open windows.',...
     '',...
     'Click Cancel to abort and save your data.',...
-    'Click OK to proceed.'},...
-    'Do you want to close?',...
+    'Click OK to close eRDF Analyser.'},...
+    'Do you want to close eRDF Analyser?',...
     'OK','Cancel','Cancel');
 switch CloseDlg
     case 'OK'
