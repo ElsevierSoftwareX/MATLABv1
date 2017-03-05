@@ -13,7 +13,7 @@ The <b>source code</b> is available in the main repository, or see Release (http
 - <i>Help</i> folder containing user manual documentation
 - <i>Test_data</i> folder containing example diffraction data
 
-The <b>standalone executable</b> (Windows only) requires MATLAB Runtime version 9.0 (2015b). If you already have this runtime version, you can download and run the <i>eRDF_Analyser_web.exe</i> installer (https://github.com/eRDFAnalyser/MATLABv1/releases/tag/v1.0). If not, the runtime can be downloaded from http://www.mathworks.com/products/compiler/mcr.html and installed before running the abovementioned executable installer. You can also choose to download the <i>eRDF_Analyser_mcr.exe</i> installer - a bigger file which is packaged with the runtime.
+The <b>standalone executable</b> (Windows only) package requires MATLAB Runtime version 9.0 (2015b). If you already have this runtime version, you can download and run the <i>eRDF_Analyser_web.exe</i> installer (https://github.com/eRDFAnalyser/MATLABv1/releases/tag/v1.0). If not, the runtime can be downloaded from http://www.mathworks.com/products/compiler/mcr.html and installed before running the abovementioned executable installer. You can also choose to download the <i>eRDF_Analyser_mcr.exe</i> installer instead - a bigger file which is packaged with the runtime.
 
 The <b>user manual</b> can be accessed online at https://erdfanalyser.github.io/MATLABv1/
 
