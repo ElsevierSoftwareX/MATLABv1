@@ -92,6 +92,7 @@ handles.damping = 0.3;
 handles.paramK = load('Parameter_files/Kirkland_2010.txt','-ascii');
 handles.param_val = 2;
 handles.rmax = 10;
+handles.dr = 0.01;
 
 % radio button groups - default selection
 set(handles.uibuttongroup_DP,'SelectedObject',handles.Amorphous); % centre optimisation routine
@@ -1951,6 +1952,37 @@ guidata(hObject,handles)
 
 % -----------------------------------------------------------------------
 % -----------------------------------------------------------------------
+% --- Executes during object creation, after setting all properties.
+function edit_dr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit_dr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+function edit_dr_Callback(hObject, eventdata, handles)
+% hObject    handle to edit_dr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit_dr as text
+%        str2double(get(hObject,'String')) returns contents of edit_dr as a double
+% --- dr sets the step size of (x-axis) in G(r)
+dr = str2double(get(hObject,'String'));
+if isnan(dr) || dr < 0
+    set(hObject, 'String', 0.01);
+    errordlg('Input must be a positive number','Error');
+    dr = 0.01;
+end
+handles.dr = dr;
+
+guidata(hObject,handles)
+% -----------------------------------------------------------------------
+% -----------------------------------------------------------------------
 
 % --- Executes on button press in button_Autofit (Auto Fit)
 function button_Autofit_Callback(hObject, eventdata, handles)
@@ -2124,7 +2156,8 @@ hold off
 % ----------------------------------------------------------------------
 % Plot Gr
 rmax = handles.rmax;
-r = 0.01:0.01:rmax;
+dr = handles.dr;
+r = 0.01:dr:rmax;
 handles.r = r;
 
 Gr = 8 * pi * phiq_damp'* sin(q*r) * ds ;
