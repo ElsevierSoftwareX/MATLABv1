@@ -214,6 +214,7 @@ ds = str2double(get(hObject,'String'));
 if isnan(ds) || ds < 0
     set(hObject, 'String', 1);
     errordlg('Input must be a positive number','Error');
+    ds = 1;
 end
 handles.ds = ds;
 
@@ -264,6 +265,9 @@ MedianFilter = questdlg('Do you want to use a median filter to remove salt-and-p
     'Remove salt-and-pepper noise',...
     'Yes','No',...
     'Yes');
+if isempty(MedianFilter) %user closes dlg
+    dp = dptxt;
+end
 switch MedianFilter
     case 'Yes'
 	% Apply median filter to remove single pixel noise
@@ -282,30 +286,39 @@ end
 %% Mask beam stop
 % ------------------------------------------------------
 % Alert user to mask beam stop with freehand mask
-uiwait(msgbox({'Click and drag to draw a freehand ROI to mask beamstop';
-    'or any desired region. If not, click anywhere in figure.'},...
+uiwait(msgbox({'Click and drag to draw a freehand ROI to mask beamstop'
+    '(overestimate to ensure full coverage) or any other region.'
+    ''
+    'If no masking is needed, click anywhere in figure.'},...
     'Masking','help'));
+
 FreeMask = 1; %--- while loop (to create additional Masks)
 while FreeMask == 1;
-    
-% Create freehand ROI
-hFH = imfreehand();
-binaryMask = hFH.createMask();
+    % Create freehand ROI
+    hFH = imfreehand();
+    if ishandle(DPfig) == 0 %user closes DPfig, terminate and return to main GUI
+        return
+    end
+    binaryMask = hFH.createMask();
 
-% Burn mask into image by setting it to NaN (0) wherever the mask is true.
-dp(binaryMask) = NaN;
-ig(binaryMask) = 0;
+    % Burn mask into image by setting it to NaN (0) wherever the mask is true.
+    dp(binaryMask) = NaN;
+    ig(binaryMask) = 0;
 
-% Display the masked image
-plim = mat2gray(ig);
-figure(DPfig);
-imshow(imadjust(plim));
+    % Display the masked image
+    plim = mat2gray(ig);
+    figure(DPfig);
+    imshow(imadjust(plim));
+    % change colormap of diffraction pattern to colorcube
+    colormap(gca,colorcube);
 
-% ask user for additional masks
-AddMask = questdlg('Do you want to mask additional regions?',...
-        'Additional Masking',...
-        'No','Yes',...
-        'No');
+    % ask user for additional masks
+    AddMask = questdlg({'Do you want to mask additional regions?'
+            'It is good to mask significant distortions'
+            'or areas of beamstop still visible.'},...
+            'Additional Masking',...
+            'No','Yes',...
+            'No');
     switch AddMask
         case 'No'
             FreeMask = 0;
@@ -317,12 +330,7 @@ end
 % -------------------------------------------------------
 %% Find centre
 % -------------------------------------------------------
-% change colormap of diffraction pattern to colorcube
-figure(DPfig);
-colormap(gca,colorcube);
-
 % Define initial centre as a centre of mass
-
 dpm = dptxt;
 dpm(binaryMask) = 0;
 tint = sum(sum(dpm));
@@ -347,13 +355,16 @@ while OPT == 1
 
     % Alert user to adjust ellipse position and double click when finished
     h = helpdlg({'Move and resize marker to fit one of the inner contours',...
-        '(in black / blue / green, with minimal intensity variance).',...
+        '(in black / blue / green that looks the smoothest).',...
         'Try to be as accurate as possible.','',...
         'Double-click inside ellipse once finished.'},...
-        'Adjust ellipse marker');
+        'Adjust and double-click marker');
 
     % wait for double-click -> get position
     wait(hEllipse);
+    if ishandle(DPfig) == 0 %user closes DPfig, terminate and return to main GUI
+        return
+    end
     pos = hEllipse.getPosition;
     
     % close helpdlg if user doesn't
@@ -381,6 +392,13 @@ while OPT == 1
         'Optimise Centre',...
         'Continue with selection','Run optimisation routine',...
         'Continue with selection');
+    if isempty(Choice_Opt) %User closed dlg
+        figure(DPfig);
+        delete(Circle_User);
+        delete(Centre_User);
+        OPT = 1;
+        continue
+    end
     switch Choice_Opt
         case 'Continue with selection'
             OPT = 0;
@@ -397,17 +415,16 @@ while OPT == 1
                     % ----------------------------------------------------
                     % Input dialog for optimisation parameters
                     prompt = {'Enter number of projections:',...
-                        'Enter distance of contour from edge (in pixels)',...
+                        'Enter distance of additional marker from edge (in pixels)',...
                         'Enter size of grid scan (in pixels)'};
                     % default values
                     def = {'100','200','8'};
                     opt_input = inputdlg(prompt,'Optimisation parameters',1,def);
-                    if isempty(opt_input) 
-                        % User clicked cancel
-                        OPT = 0; % exit optimisation routine
+                    if isempty(opt_input) % User closed dlg
                         figure(DPfig);
                         delete(Circle_User);
                         delete(Centre_User);
+                        OPT = 1;
                         continue
                     end 
                     % input values into variables
@@ -649,25 +666,24 @@ while OPT == 1
                     % with equal intensities within the defined limits
                     % ----------------------------------------------------
                     % Input dialog for optimisation parameters
-                    prompt = {'Define limit of next contour (in pixels)',...
+                    prompt = {'Define limit (in pixels) to search for pixels of equal intensity',...
                         'Enter size of grid scan (in pixels)'};
                     def = {'20','25'}; % default value
                     opt_input = inputdlg(prompt,'Optimisation parameters',1,def);
-                    if isempty(opt_input) 
-                        % User clicked cancel
-                        OPT = 0; % exit optimisation routine
+                    if isempty(opt_input) % User closed dlg
                         figure(DPfig);
                         delete(Circle_User);
                         delete(Centre_User);
+                        OPT = 1;
                         continue
                     end 
                     % input values into variables
                     pwidth = str2double(opt_input{1});
                     maxshift = str2double(opt_input{2});
-                    figure(DPfig);
                     % ----------------------------------------------------
                     % Define limits for centre optimisation
                     p2 = ceil(rad+pwidth);
+                    figure(DPfig);
                     Circle_p2 = rectangle('Position',[xcentre-p2, ycentre-p2, 2*p2, 2*p2], ...
                         'Curvature', [1,1], 'EdgeColor', 'w', 'LineWidth', 2);
                     % ---------------------------------------------------- 
@@ -794,7 +810,6 @@ while OPT == 1
                 uiwait(msgbox({'Optimisation not successful!';
                     'Increase maxshift or provide better initial guess.'},...
                     'Error','error'));
-                OPT = 1;
                 figure(DPfig);
                 delete(Centre_User);
                 delete(Circle_p2);
@@ -802,7 +817,8 @@ while OPT == 1
                     delete(Circle_User);
                     delete(EqIntPlot);
                 catch
-                end;
+                end
+                OPT = 1;
                 continue
             end;
 
@@ -810,8 +826,7 @@ while OPT == 1
             % Ask user to accept/reject optimisation
             % -------------------------------------------------------
             figure(DPfig);
-            try
-                delete(Circle_User)
+            try delete(Circle_User)
             catch
             end
             % Plot the initial circle
@@ -834,7 +849,21 @@ while OPT == 1
                 'No, use the centre that I chose before',...
                 'No, try optimisation again',...
                 'No, use the centre that I chose before');
-            
+            if isempty(Accept_Opt) % User closed dlg
+                figure(DPfig);
+                delete(Centre_User);
+                delete(Centre_Opt);
+                delete(Circle_User2);
+                delete(Circle_Opt);
+                delete(Circle_p2);
+                delete(Circle_p2_Opt);
+                try close(FigCentrefinder);
+                catch
+                    delete(EqIntPlot);
+                end
+                OPT = 1;
+                continue
+            end
             switch Accept_Opt
                 case 'Yes, accept and continue'
                     xcentre = xcentre_opt;
@@ -843,10 +872,11 @@ while OPT == 1
                     % --> continue with azimuthal average/variance routine
                 case 'No, use the centre that I chose before'
                     OPT = 0; %--- end while (optimisation) loop
-                    try
+                    try 
+                        figure(FigCentrefinder);
                         close(FigCentrefinder);
                     catch
-                    end;
+                    end
                     % use user defined centre 
                     % --> continue with azimuthal average/variance routine
                 case 'No, try optimisation again'
@@ -857,10 +887,10 @@ while OPT == 1
                     delete(Circle_Opt);
                     delete(Circle_p2);
                     delete(Circle_p2_Opt);
-                    try
-                        close(FigCentrefinder);
+                    try delete(EqIntPlot);
                     catch
-                        delete(EqIntPlot);
+                        figure(FigCentrefinder);
+                        close(FigCentrefinder);
                     end;
                     OPT = 1;
             end
@@ -919,7 +949,9 @@ end;
 if br == 1
     delete(AzProgBar);
     % User clicked the Cancel button.
-	errordlg({'Unable to proceed with analysis.'},'Analysis terminated by user','modal');
+	errordlg({'Process aborted by user. Unable to proceed with analysis.'},...
+        'Analysis terminated','modal');
+    close(DPfig);
     return;
 end;
 azvar=m2./nazav;
@@ -931,33 +963,6 @@ delete(AzProgBar);
 handles.azav = azav;
 handles.azvar = azvar;
 guidata(hObject,handles)
-
-% -------------------------------------------------------
-% Ask user to choose directory to save files
-% -------------------------------------------------------
-folder = uigetdir(pname,'Select folder to save azimuthal average/variance data');
-if folder == 0
-	% User clicked the Cancel button.
-	errordlg({'You have not saved the data.',...
-        'Unable to proceed with analysis.'},'Analysis terminated by user','modal');
-    return;
-end
-addpath(folder);
-rehash toolboxcache;
-handles.folder = folder;
-guidata(hObject,handles)
-
-azav_name = sprintf('%s/%s_azav.txt',handles.folder,handles.DPfname);
-save (azav_name,'azav','-ASCII');
-% T_azav = table(pix_xax,azav,...
-%     'VariableNames',{'Pixel' 'Intensity'});
-% writetable(T_azav,azav_name);
-
-azvar_name = sprintf('%s/%s_azvar.txt',handles.folder,handles.DPfname);
-save (azvar_name,'azvar','-ASCII');
-% T_azvar = table(pix_xax,azvar,...
-%     'VariableNames',{'Pixel' 'Intensity'});
-% writetable(T_azvar,azvar_name);
 % -------------------------------------------------------
 % Plot average and variance data
 % -------------------------------------------------------
@@ -965,63 +970,86 @@ save (azvar_name,'azvar','-ASCII');
 pix_xax = linspace(1,azsize,azsize);
 %q_xax = pix_xax' * handles.ds*2*pi;
 
-% Azimuthal Average
-ScreenRes = handles.ScreenRes; %display figure on left of screen (2nd third of height)
-figure('Name','Azimuthal Average','NumberTitle','off',...
+ScreenRes = handles.ScreenRes;
+%display figure on left of screen (second third of height)
+figure('Name','Azimuthally Averaged Intensity and Variance','NumberTitle','off',...
     'OuterPosition',[1 ScreenRes(4)/3 ScreenRes(3)/3 ScreenRes(4)/3]);
+% Azimuthal Average
+subplot(1,2,1);
 plot(pix_xax,azav);
+title('Azimuthal Average');
 xlabel('Pixel');
 ylabel('Intensity');
-
-% Azimuthal Variance %display figure on left of screen (last third of height)
-figure('Name','Azimuthal Variance','NumberTitle','off',...
-    'OuterPosition',[1 1 ScreenRes(3)/3 ScreenRes(4)/3]);
+% Azimuthal Variance
+subplot(1,2,2);
 plot(pix_xax,azvar);
+title('Azimuthal Variance');
 xlabel('Pixel');
 ylabel('Intensity');
 % -------------------------------------------------------
-% Alert user on process
-uiwait(msgbox({'Azimuthally averaged intensity and variance raw data have been',...
-    'saved in the selected folder, and are plotted in separate figures.','',...
-    'To continue, click "OK" to plot "Azimuthally Averaged Intensity Profile"',...
-    'in the main window. If you wish to stop and resume analysis later,',...
-    'just load the associated Intensity Profile ("azav.txt").'},...
-    'Click OK to continue','help','modal'));
+% Ask user to save files
+% -------------------------------------------------------
+SaveAz = questdlg({'Do you want to save the azimuthal average/variance data?'
+        'This will save the raw data as text files for re-analysis later.'''
+        'You can save the plots displayed on the left using File>Save in the plot window.'},...
+        'Save azimuthal average / variance data',...
+        'Yes, save data','No, continue without saving',...
+        'Yes, save data');
+switch SaveAz
+    case 'Yes, save data'
+        folder = uigetdir(pname,'Select folder to save azimuthal average/variance data');
+        if folder == 0
+            % User clicked the Cancel button.
+            warndlg('Analysis will continue without saving the data.',...
+                'Continue without saving','modal');
+        end
+        addpath(folder);
+        rehash toolboxcache;
+        handles.folder = folder;
+        guidata(hObject,handles)
+
+        azav_name = sprintf('%s/%s_azav.txt',handles.folder,handles.DPfname);
+        save (azav_name,'azav','-ASCII');
+
+        azvar_name = sprintf('%s/%s_azvar.txt',handles.folder,handles.DPfname);
+        save (azvar_name,'azvar','-ASCII');
+
+        uiwait(msgbox({'Raw data have been saved in the selected folder.','',...
+            'To continue, click "OK". If you wish to resume analysis later,',...
+            'just load the associated Intensity Profile ("azav.txt").'},...
+            'Click OK to continue','help','modal'));
+    case 'No, continue without saving'
+        %do nothing -- continue
+end
 % -------------------------------------------------------
 %% Load / plot average intensity data for next analysis step
 % -------------------------------------------------------
-filename = sprintf('%s_azav.txt',handles.DPfname);
-dat = load(filename,'-ASCII');
-handles.dat = dat;
-
-%plot Intensity Profile
+% plot Intensity Profile in GUI axes1
 axes(handles.axes1);
-plot(dat);
+plot(azav);
 xlabel('Pixel Values');
 ylabel('Pixel Intensity');
 
-dat_ind = IndexData(dat);
-handles.dat_ind = dat_ind;
-
-guidata(hObject,handles)
+Ind_azav = IndexData(azav);
+handles.dat_ind = Ind_azav;
 % -------------------------------------------------------
 % Fill in the data range fields for text_d1 (Start) and text_d2 (End)
 % -------------------------------------------------------
 % d1: Start at data point with maximum intensity value
-[MaxIntensity,MaxValPixel] = max(dat); %#ok<ASGLU>
+[MaxIntensity,MaxValPixel] = max(azav); %#ok<ASGLU>
 set(handles.text_d1, 'String', MaxValPixel);
 d1 = MaxValPixel;
 handles.d1 = d1;
 
 % d2: End at last intensity data point
-max_dat_ind = max(handles.dat_ind);
-set(handles.text_d2, 'String', max_dat_ind);
-d2 = max_dat_ind;
+max_Ind_azav = max(Ind_azav);
+set(handles.text_d2, 'String', max_Ind_azav);
+d2 = max_Ind_azav;
 handles.d2 = d2;
 % -------------------------------------------------------
 % plot new range of data points
 % -------------------------------------------------------
-[I,I1,I2,x,x1,x2] = SelectedIntensityRange(d1,d2,dat,dat_ind);
+[I,I1,I2,x,x1,x2] = SelectedIntensityRange(d1,d2,azav,Ind_azav);
 
 axes(handles.axes2);
 plot(x1,I1);
@@ -1043,9 +1071,10 @@ handles.x = x;
 guidata(hObject,handles)
 % -------------------------------------------------------
 % Prompt user to continue with RDF Analysis
-msgbox({'If necessary, please modify the data range for fitting.',...
+msgbox({'Use the Data Cursor tool to check and modify the data range for analysis',...
+    '(key in pixel values such that range is maximised while excluding noisy regions.)','',...
     'Check that a calibration factor has been input before',...
-    'proceeding to click "Calibrate and plot selected data range".'},...
+    'clicking "Calibrate and plot selected data range".'},...
     'Modify/Calibrate selected data range','help','modal');
 % -------------------------------------------------------
 
@@ -1079,7 +1108,7 @@ I = dat(d1:d2);
 x = dat_ind(d1:d2);
 
 % ----------------------------------------------------------------------
-% --- Executes on button press in Button_OpenData.
+% --- Executes on button press in Button_OpenData (Load Intensity Profile)
 function Button_OpenData_Callback(hObject, eventdata, handles)
 % hObject    handle to Button_OpenData (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -1102,10 +1131,6 @@ rehash toolboxcache;
 dat = load(filename,'-ASCII');
 handles.dat = dat;
 
-% [datpath,datfname,ext] = fileparts(filename); %#ok<ASGLU>
-% handles.datfname = datfname;
-% handles.datpath = datpath;
-
 % Plot Intensity Profile
 axes(handles.axes1);
 plot(dat);
@@ -1124,7 +1149,7 @@ d1 = MaxValPixel;
 handles.d1 = d1;
 
 % d2: End at last intensity data point
-max_dat_ind = max(handles.dat_ind);
+max_dat_ind = max(dat_ind);
 set(handles.text_d2, 'String', max_dat_ind);
 d2 = max_dat_ind;
 handles.d2 = d2;
@@ -1157,9 +1182,10 @@ end
 guidata(hObject,handles)
 % -------------------------------------------------------
 % Prompt user to continue with RDF Analysis
-msgbox({'If necessary, please modify the data range for fitting.',...
+msgbox({'Use the Data Cursor tool to check / modify the data range for analysis',...
+    '(key in pixel values such that range is maximised while excluding noisy regions.)','',...
     'Check that a calibration factor has been input before',...
-    'proceeding to click "Calibrate and plot selected data range".'},...
+    'clicking "Calibrate and plot selected data range".'},...
     'Modify/Calibrate selected data range','help','modal');
 % -----------------------------------------------------------------------
 % ----------------------------------------------------------------------
@@ -1186,8 +1212,9 @@ function text_d1_Callback(hObject, eventdata, handles)
 %--- d1: starting data point
 d1 = str2double(get(hObject,'String'));
 if isnan(d1) || d1 < 0
-    set(hObject, 'String', 0);
+    set(hObject, 'String', 1);
     errordlg('Input must be a positive number','Error');
+    d1 = 1;
 end
 handles.d1 = d1;
 set(handles.text_d1,'String',handles.d1);
@@ -1216,13 +1243,15 @@ function text_d2_Callback(hObject, eventdata, handles)
 % --- d2: ending data point
 d2 = str2double(get(hObject,'String'));
 if isnan(d2) || d2 < 0
-    set(hObject, 'String', 0);
+    set(hObject, 'String', 1);
     errordlg('Input must be a positive number','Error');
+    d2 = 1;
 end
 if d2 > length(handles.dat_ind)
     max_dat_ind = max(handles.dat_ind);
     set(hObject, 'String', max_dat_ind);
     errordlg('Input exceeds data range','Error');
+    d2 = max_dat_ind;
 end
 handles.d2 = d2;
 set(handles.text_d2,'String',handles.d2);
@@ -1708,8 +1737,9 @@ function edit_dN_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of edit_dN as a double
 dN = str2double(get(hObject,'String'));
 if isnan(dN) || dN < 0
-    set(hObject, 'String', 0);
+    set(hObject, 'String', 100);
     errordlg('Input must be a positive number','Error');
+    dN = 100;
 end
 handles.dN = dN;
 
@@ -1766,8 +1796,9 @@ function q_fixed_Callback(hObject, eventdata, handles)
 % --- q_fix = value close to which user wants fitting to be done
 q_fix = str2double(get(hObject,'String'));
 if isnan(q_fix) || q_fix < 0
-    set(hObject, 'String', 0);
+    set(hObject, 'String', max(handles.q));
     errordlg('Input must be a positive number','Error');
+    q_fix = max(handles.q);
 end
 % Warn user if q input exceeds available range --> set to max(q)
 if q_fix > max(handles.q)
@@ -1808,8 +1839,9 @@ function edit_dq_Callback(hObject, eventdata, handles)
 % --- value to change q_fixed by
 dq = str2double(get(hObject,'String'));
 if isnan(dq) || dq < 0
-    set(hObject, 'String', 0);
+    set(hObject, 'String', 0.1);
     errordlg('Input must be a positive number','Error');
+    dq = 0.1;
 end
 handles.dq = dq;
 
@@ -1926,6 +1958,7 @@ function button_Autofit_Callback(hObject, eventdata, handles)
 % hObject    handle to button_Autofit (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
 %% Compute gq = <f^2(q)>
 s2 = handles.s2;
 elem1 = handles.elem1;
@@ -1967,9 +2000,9 @@ if handles.param_val == 3 % Lobato
         'RowNames',{'elem1','elem2','elem3','elem4','elem5'});
     handles.paramL_table = paramL_table;
     [f1,f2,f3,f4,f5] = LobatoFactors(s2,paramL_1,paramL_2,paramL_3,paramL_4,paramL_5,paramL_table);
-    
+
 else % Kirkland   
-   
+
     paramK = handles.paramK;
     paramK_1 = paramK(elem1,:);
     paramK_2 = paramK(elem2,:);
@@ -1982,7 +2015,7 @@ else % Kirkland
         'RowNames',{'elem1','elem2','elem3','elem4','elem5'});
     handles.paramK_table = paramK_table;
     [f1,f2,f3,f4,f5] = KirklandFactors(s2,paramK_1,paramK_2,paramK_3,paramK_4,paramK_5,paramK_table);
-    
+
 end
 fq = (f1.*e_r1) + (f2.*e_r2) + (f3.*e_r3) + (f4.*e_r4) + (f5.*e_r5);
 fq_sq = fq.^2;
@@ -2111,6 +2144,16 @@ hold off
 % to export_excel results from Autofit without manual optimisation
 handles.fit = handles.Autofit;
 guidata(hObject,handles)
+
+% error handling
+if isnan(N)
+    uiwait(errordlg({'Check that elemental composition has been input correctly.'},...
+        'Error','modal'));
+elseif handles.ds == 1
+    uiwait(errordlg({'Check that calibration factor has been input.'
+        'Click on Calibrate and plot selected range in previous tab before fitting.'},...
+        'Error','modal'));
+end
 % -----------------------------------------------------------------------
 
 function [f1,f2,f3,f4,f5] = LobatoFactors(s2,paramL_1,paramL_2,paramL_3,paramL_4,paramL_5,paramL_table)
@@ -2313,9 +2356,9 @@ if handles.param_val == 3 % Lobato
     paramL_table = array2table(paramL_elem,'VariableNames',{'A1','A2','A3','A4','A5','B1','B2','B3','B4','B5'},'RowNames',{'elem1','elem2','elem3','elem4','elem5'});
     handles.paramL_table = paramL_table;
     [f1,f2,f3,f4,f5] = LobatoFactors(s2,paramL_1,paramL_2,paramL_3,paramL_4,paramL_5,paramL_table);
-    
+
 else % Kirkland   
-   
+
     paramK = handles.paramK;
     paramK_1 = paramK(elem1,:);
     paramK_2 = paramK(elem2,:);
@@ -2326,7 +2369,7 @@ else % Kirkland
     paramK_table = array2table(paramK_elem,'VariableNames',{'a1','b1','a2','b2','a3','b3','c1','d1','c2','d2','c3','d3'},'RowNames',{'elem1','elem2','elem3','elem4','elem5'});
     handles.paramK_table = paramK_table;
     [f1,f2,f3,f4,f5] = KirklandFactors(s2,paramK_1,paramK_2,paramK_3,paramK_4,paramK_5,paramK_table);
-    
+
 end
 %%
 fq = (f1.*e_r1) + (f2.*e_r2) + (f3.*e_r3) + (f4.*e_r4) + (f5.*e_r5);
@@ -2424,6 +2467,15 @@ plot([xlim(1) xlim(2)], [0 0],'k');
 hold off
 
 guidata(hObject,handles)
+% error handling
+if isnan(N)
+    uiwait(errordlg({'Check that elemental composition has been input correctly.'},...
+        'Error','modal'));
+elseif handles.ds == 1
+    uiwait(errordlg({'Check that calibration factor has been input.'
+        'Click on Calibrate and plot selected range in previous tab before fitting.'},...
+        'Error','modal'));
+end
 % --------------------------------------------------------------------
 
 % ---------------------------------------------------------------------
@@ -2439,8 +2491,8 @@ function UiMenu_SavePlots_Callback(hObject, eventdata, handles)
 SaveDlg = questdlg({'This will save the I(q), Phi(q) and G(r) plots as they are.',...
     'Click OK to continue to save them as individual JPEG files.',...
     '','If you wish to edit the plots before exporting, click Cancel.',...
-    '','Ensure Zoom/Data Cursor tools are inactive, then right-click on',...
-    'the individual plots and choose "Open plot in new figure".'},...
+    '--> Ensure Zoom/Data Cursor tools are inactive, then right-click',...
+    'on the individual plots and choose "Open plot in new figure".'},...
     'Save Plots',...
     'OK','Cancel','OK');
 switch SaveDlg
