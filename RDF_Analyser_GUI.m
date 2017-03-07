@@ -1031,6 +1031,7 @@ xlabel('Pixel Values');
 ylabel('Pixel Intensity');
 
 Ind_azav = IndexData(azav);
+handles.dat = azav;
 handles.dat_ind = Ind_azav;
 % -------------------------------------------------------
 % Fill in the data range fields for text_d1 (Start) and text_d2 (End)
@@ -2762,8 +2763,7 @@ ScreenRes = handles.ScreenRes;
 FigIP = figure('Name','Intensity Profile','NumberTitle','off',...
     'OuterPosition',[ScreenRes(3)/3 1 ScreenRes(3)/3 ScreenRes(4)/3]);
 new_axes = copyobj([handles.axes1 legend(handles.axes1)],FigIP);
-set(new_axes,'OuterPosition',[0 0 1 1]);
-
+set(new_axes(1),'OuterPosition',[0 0 1 1]);
 % --------------------------------------------------------------------
 function NewFigPlot_axes4_Callback(hObject, eventdata, handles)
 % hObject    handle to NewFigPlot_axes4 (see GCBO)
@@ -2773,8 +2773,7 @@ ScreenRes = handles.ScreenRes;
 FigIq = figure('Name','Scattering Intensity I(q)','NumberTitle','off',...
     'OuterPosition',[ScreenRes(3)/3*2 ScreenRes(4)/3*2 ScreenRes(3)/3 ScreenRes(4)/3]);
 new_axes = copyobj([handles.axes4 legend(handles.axes4)],FigIq);
-set(new_axes,'OuterPosition',[0 0 1 1]);
-
+set(new_axes(1),'OuterPosition',[0 0 1 1]);
 % --------------------------------------------------------------------
 function NewFigPlot_axes6_Callback(hObject, eventdata, handles)
 % hObject    handle to NewFigPlot_axes7 (see GCBO)
@@ -2784,8 +2783,7 @@ ScreenRes = handles.ScreenRes;
 FigPhiq = figure('Name','Reduced Scattering Intensity Phi(q)','NumberTitle','off',...
     'OuterPosition',[ScreenRes(3)/3*2 ScreenRes(4)/3 ScreenRes(3)/3 ScreenRes(4)/3]);
 new_axes = copyobj([handles.axes6 legend(handles.axes6)],FigPhiq);
-set(new_axes,'OuterPosition',[0 0 1 1]);
-
+set(new_axes(1),'OuterPosition',[0 0 1 1]);
 % --------------------------------------------------------------------
 function NewFigPlot_axes7_Callback(hObject, eventdata, handles)
 % hObject    handle to NewFigPlot_axes6 (see GCBO)
@@ -2795,7 +2793,7 @@ ScreenRes = handles.ScreenRes;
 FigGr = figure('Name','Reduced Density Function G(r)','NumberTitle','off',...
     'OuterPosition',[ScreenRes(3)/3*2 1 ScreenRes(3)/3 ScreenRes(4)/3]);
 new_axes = copyobj([handles.axes7 legend(handles.axes7)],FigGr);
-set(new_axes,'OuterPosition',[0 0 1 1]);
+set(new_axes(1),'OuterPosition',[0 0 1 1]);
 
 % ---------------------------------------------------------------------
 % ---------------------------------------------------------------------
