@@ -1,6 +1,6 @@
 # eRDF Analyser - MATLABv1
 
-Latest release: v1.0 [06/03/2017]
+Latest release: v1.0 [08/03/2017]
 
 eRDF Analyser is an interactive and integrated tool for electron reduced density function analysis. 
 This tool allows users to input an electron diffraction pattern (obtained from a TEM) and guides them interactively through the process of fitting and extracting the reduced density function (RDF) for their material.
