@@ -651,7 +651,7 @@ while OPT == 1
                             sum_lineprofile2=sum_lineprofile2+lineprofile2(:,nn);
                         end;
                     end;
-                    
+
                     ScreenRes = handles.ScreenRes; %display figure on left of screen (one third of height)
                     FigCentrefinder = figure('Name','Centrefinder fit','NumberTitle','off',...
                         'OuterPosition',[1 ScreenRes(4)/3*2 ScreenRes(3)/3 ScreenRes(4)/3]);
@@ -659,8 +659,8 @@ while OPT == 1
                     hold all;
                     plot(sum_lineprofile2);
                     plot(sum_lineprofile1-sum_lineprofile2);
-                    legend('User line profile','Optimised line profile','Difference');
-        
+                    legend('Line profile 1','Line profile 2','Difference');
+
                 case 'Amorphous'  %---------------------------------------
                     % CentreOpt routine #4: by fitting a circle to the points
                     % with equal intensities within the defined limits
@@ -817,6 +817,8 @@ while OPT == 1
                     delete(Circle_User);
                     delete(EqIntPlot);
                 catch
+                    figure(FigCentrefinder);
+                    close(FigCentrefinder);
                 end
                 OPT = 1;
                 continue
@@ -857,9 +859,10 @@ while OPT == 1
                 delete(Circle_Opt);
                 delete(Circle_p2);
                 delete(Circle_p2_Opt);
-                try close(FigCentrefinder);
+                try delete(EqIntPlot);
                 catch
-                    delete(EqIntPlot);
+                    figure(FigCentrefinder);
+                    close(FigCentrefinder);
                 end
                 OPT = 1;
                 continue
