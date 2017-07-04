@@ -10,8 +10,8 @@
 
 Polycrystalline patterns stated below are NOT the calibration standards used for the amorphous SiO2 diffraction data, but are provided as examples.
 
-3. Polycrystalline_Au_DP-2K.txt		- Polycrystalline diffraction pattern of Au nanoparticles on carbon grid
-					- Binned by two from original 4K-by-4K data presented in manuscript due to size restrictions
-					- May require masking of distortions (dots in horizontal plane across centre) in addition to beam stop
+3. Polycrystalline_Au_DP-2K.txt		- Polycrystalline diffraction pattern of Au nanoparticles on carbon
+					- Binned by two from original 4K-by-4K data presented in manuscript
+					* Has distortions (dots in horizontal plane across centre) from CCD
 					
-4. Polycrystalline_Al_DP.txt 		- Polycrystalline diffraction pattern of Al film on carbon grid
+4. Polycrystalline_Al_DP.txt 		- Polycrystalline diffraction pattern of Al on carbon film
